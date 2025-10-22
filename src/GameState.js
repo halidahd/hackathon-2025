@@ -13,7 +13,7 @@ export class GameState {
     updateFromServerData(data) {
         this.map = data.map;
 
-        // Update bombers with all required properties
+        // Cập nhật danh sách bomber
         this.bombers = new Map(data.bombers.map(b => [b.uid, {
             uid: b.uid,
             x: b.x,
@@ -21,10 +21,11 @@ export class GameState {
             isAlive: b.isAlive ?? true,
             bombCount: b.bombCount ?? 1,
             explosionRange: b.explosionRange ?? 1,
-            speed: b.speed ?? 1
+            speed: b.speed ?? 1,
+            name: b.name
         }]));
 
-        // Update bombs with all required properties
+        // Cập nhật danh sách bom
         this.bombs = new Map(data.bombs.map(b => [b.id, {
             id: b.id,
             uid: b.uid,
@@ -34,24 +35,25 @@ export class GameState {
             bomberPassedThrough: b.bomberPassedThrough ?? true
         }]));
 
-        // Update items with all required properties
+        // Cập nhật danh sách vật phẩm
         this.items = new Map(data.items.map(i => [`${i.x},${i.y}`, {
             x: i.x,
             y: i.y,
-            type: i.type, // 'R' for range, 'B' for bombs, 'S' for speed
+            type: i.type,
             isCollected: i.isCollected ?? false
         }]));
 
+        // Cập nhật danh sách rương
         this.chests = new Set(data.chests.map(c => `${c.x},${c.y}`));
 
-        // Update my bomber
-        if (this.myBomber?.uid) {
-            this.myBomber = this.bombers.get(this.myBomber.uid);
+        // Xác định bot của mình
+        const myBot = data.bombers.find(b => b.name === 'VuaMin');
+        if (myBot) {
+            this.myBomber = this.bombers.get(myBot.uid);
         }
     }
 
     isSafePosition(x, y) {
-        // Check if position is safe from bombs
         for (const bomb of this.bombs.values()) {
             if (!bomb.isExploded && this.isInExplosionRange(x, y, bomb)) {
                 return false;
@@ -63,18 +65,20 @@ export class GameState {
     isInExplosionRange(x, y, bomb) {
         const bomber = this.bombers.get(bomb.uid);
         const range = bomber?.explosionRange || 1;
+        const bx = Math.floor(bomb.x / 40);
+        const by = Math.floor(bomb.y / 40);
+        const px = Math.floor(x / 40);
+        const py = Math.floor(y / 40);
 
-        return (x === bomb.x && Math.abs(y - bomb.y) <= range) ||
-            (y === bomb.y && Math.abs(x - bomb.x) <= range);
+        return (px === bx && Math.abs(py - by) <= range) ||
+            (py === by && Math.abs(px - bx) <= range);
     }
 
-    // Helper method to check if a position has a chest
-    hasChest(x, y) {
-        return this.chests.has(`${x},${y}`);
-    }
-
-    // Helper method to get item at position
     getItem(x, y) {
         return this.items.get(`${x},${y}`);
+    }
+
+    hasChest(x, y) {
+        return this.chests.has(`${x},${y}`);
     }
 }
